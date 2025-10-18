@@ -55,18 +55,15 @@ export async function POST(request: NextRequest) {
       where: { userId: payload.userId }
     })
     
-    const data: any = {
-      userId: payload.userId,
-      totalMoney: parseFloat(totalMoney),
-      nextPaymentDate: new Date(nextPaymentDate),
-      creditLimit: creditLimit ? parseFloat(creditLimit) : 0,
-      statementClosingDate: statementClosingDate ? new Date(statementClosingDate) : null,
-      dueDate: dueDate ? new Date(dueDate) : null,
-      // creditUsed é mantido em 0; será atualizado via despesas no crédito
-    }
-
     const financialData = await prisma.financialData.create({
-      data
+      data: {
+        userId: payload.userId,
+        totalMoney: parseFloat(totalMoney),
+        nextPaymentDate: new Date(nextPaymentDate),
+        creditLimit: creditLimit ? parseFloat(creditLimit) : 0,
+        statementClosingDate: statementClosingDate ? new Date(statementClosingDate) : null,
+        dueDate: dueDate ? new Date(dueDate) : null,
+      }
     })
     
     return NextResponse.json(financialData)

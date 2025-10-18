@@ -1,9 +1,9 @@
-import jwt from 'jsonwebtoken'
+import jwt, { type SignOptions, type Secret } from 'jsonwebtoken'
 import { cookies } from 'next/headers'
 
 const TOKEN_NAME = 'auth_token'
 
-const getSecret = () => {
+const getSecret = (): Secret => {
   return process.env.AUTH_SECRET || 'dev-secret'
 }
 
@@ -12,8 +12,9 @@ export interface AuthTokenPayload {
   email: string
 }
 
-export function signToken(payload: AuthTokenPayload, expiresIn: string = '7d') {
-  return jwt.sign(payload, getSecret(), { expiresIn })
+export function signToken(payload: AuthTokenPayload, expiresInSeconds: number = 60 * 60 * 24 * 7) {
+  const options: SignOptions = { expiresIn: expiresInSeconds }
+  return jwt.sign(payload, getSecret(), options)
 }
 
 export function verifyToken(token: string): AuthTokenPayload | null {

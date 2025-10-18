@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, Prisma } from '@prisma/client'
 import { getCurrentUserFromCookies } from '@/lib/auth'
 
 const prisma = new PrismaClient()
@@ -32,36 +32,34 @@ export async function POST(request: NextRequest) {
 
     const { description, amount, date, paymentMethod } = await request.json()
     
-    const data: any = {
-      userId: payload.userId,
-      description,
-      amount: parseFloat(amount),
-      date: new Date(date),
-      paymentMethod: paymentMethod || 'cash',
-    }
-
     const expense = await prisma.expense.create({
-      data
+      data: {
+        userId: payload.userId,
+        description,
+        amount: parseFloat(amount),
+        date: new Date(date),
+        paymentMethod: (paymentMethod || 'cash') as 'cash' | 'pix' | 'credit',
+      }
     })
 
     // Ajusta dados financeiros conforme método de pagamento
-    const fd: any = await prisma.financialData.findFirst({
+    const fd = await prisma.financialData.findFirst({
       where: { userId: payload.userId },
       orderBy: { id: 'desc' }
     })
 
     if (fd) {
-      if (data.paymentMethod === 'cash' || data.paymentMethod === 'pix') {
-        const newTotal = (fd.totalMoney || 0) - data.amount
+      if (expense.paymentMethod === 'cash' || expense.paymentMethod === 'pix') {
+        const newTotal = (fd.totalMoney || 0) - expense.amount
         await prisma.financialData.update({
           where: { id: fd.id },
-          data: { totalMoney: newTotal } as any
+          data: { totalMoney: newTotal }
         })
-      } else if (data.paymentMethod === 'credit') {
-        const newUsed = (fd.creditUsed || 0) + data.amount
+      } else if (expense.paymentMethod === 'credit') {
+        const newUsed = (fd.creditUsed || 0) + expense.amount
         await prisma.financialData.update({
           where: { id: fd.id },
-          data: { creditUsed: newUsed } as any
+          data: { creditUsed: newUsed }
         })
       }
     }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
@@ -42,11 +42,6 @@ export default function Header({ dailySpending = 0 }: HeaderProps) {
     await signOut()
   }
 
-  // Fechar menu mobile quando a rota mudar
-  useEffect(() => {
-    setMobileMenuOpen(false)
-  }, [pathname])
-
   return (
     <header className="bg-gray-900 border-b border-gray-800 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -73,12 +68,13 @@ export default function Header({ dailySpending = 0 }: HeaderProps) {
                       ? 'bg-blue-600 text-white'
                       : 'text-gray-300 hover:text-white hover:bg-gray-700'
                   }`}
+                  onClick={() => setMobileMenuOpen(false)}
                 >
                   <Icon className="h-4 w-4 mr-2" />
                   {item.name}
                 </Link>
-              )
-            })}
+              )}
+            )}
           </nav>
 
           {/* Right side - Daily Spending & User Menu */}
@@ -155,6 +151,7 @@ export default function Header({ dailySpending = 0 }: HeaderProps) {
                         ? 'bg-blue-600 text-white'
                         : 'text-gray-300 hover:text-white hover:bg-gray-700'
                     }`}
+                    onClick={() => setMobileMenuOpen(false)}
                   >
                     <Icon className="h-5 w-5 mr-3" />
                     {item.name}
