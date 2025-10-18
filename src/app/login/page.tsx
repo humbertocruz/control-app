@@ -21,18 +21,16 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({})
   
-  const { signIn } = useAuth()
+  const { signIn, loading } = useAuth()
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setFieldErrors({})
-    setLoading(true)
 
     try {
       // Validar dados com Zod
@@ -60,8 +58,6 @@ export default function LoginPage() {
       } else {
         setError('Erro inesperado. Tente novamente.')
       }
-    } finally {
-      setLoading(false)
     }
   }
 

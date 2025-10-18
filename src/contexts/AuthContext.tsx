@@ -20,57 +20,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = createSupabaseClient()
 
   useEffect(() => {
-    // Verificar sessão atual
     const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
       setUser(session?.user ?? null)
       setLoading(false)
     }
 
     getSession()
 
-    // Escutar mudanças de autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user ?? null)
-        setLoading(false)
-      }
-    )
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
 
     return () => subscription.unsubscribe()
   }, [supabase.auth])
 
   const signIn = async (email: string, password: string) => {
+    setLoading(true)
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
-      
+
       if (error) {
         return { error: error.message }
       }
-      
+
+      setUser(data.user)
       return {}
     } catch (error) {
       return { error: 'Erro inesperado ao fazer login' }
+    } finally {
+      setLoading(false)
     }
   }
 
   const signUp = async (email: string, password: string) => {
+    setLoading(true)
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
       })
-      
+
       if (error) {
         return { error: error.message }
       }
-      
+
+      setUser(data.user)
       return {}
     } catch (error) {
       return { error: 'Erro inesperado ao criar conta' }
+    } finally {
+      setLoading(false)
     }
   }
 

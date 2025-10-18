@@ -27,7 +27,6 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<{ 
@@ -36,7 +35,7 @@ export default function RegisterPage() {
     confirmPassword?: string 
   }>({})
   
-  const { signUp } = useAuth()
+  const { signUp, loading } = useAuth()
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,7 +43,6 @@ export default function RegisterPage() {
     setError('')
     setFieldErrors({})
     setSuccess(false)
-    setLoading(true)
 
     try {
       // Validar dados com Zod
@@ -57,9 +55,7 @@ export default function RegisterPage() {
         setError(error)
       } else {
         setSuccess(true)
-        setTimeout(() => {
-          router.push('/dashboard')
-        }, 2000)
+        router.push('/dashboard')
       }
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -72,8 +68,6 @@ export default function RegisterPage() {
       } else {
         setError('Erro inesperado. Tente novamente.')
       }
-    } finally {
-      setLoading(false)
     }
   }
 

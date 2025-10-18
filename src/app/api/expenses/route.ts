@@ -1,13 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
 const prisma = new PrismaClient()
 
+const createSupabaseServerClient = async () => {
+  const cookieStore = await cookies()
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          cookieStore.set({ name, value, ...options })
+        },
+        remove(name: string, options: CookieOptions) {
+          cookieStore.set({ name, value: '', ...options })
+        },
+      },
+    }
+  )
+}
+
 export async function GET() {
-  const cookieStore = cookies()
-  const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+  const supabase = await createSupabaseServerClient()
 
   try {
     const { data: { session } } = await supabase.auth.getSession()
@@ -29,12 +49,20 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const supabase = await createSupabaseServerClient()
+
   try {
-    const { description, amount, date, userId } = await request.json()
+    const { data: { session } } = await supabase.auth.getSession()
+
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { description, amount, date } = await request.json()
     
     const expense = await prisma.expense.create({
       data: {
-        userId,
+        userId: session.user.id,
         description,
         amount: parseFloat(amount),
         date: new Date(date)
@@ -49,7 +77,15 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const supabase = await createSupabaseServerClient()
+
   try {
+    const { data: { session } } = await supabase.auth.getSession()
+
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
     
@@ -58,7 +94,7 @@ export async function DELETE(request: NextRequest) {
     }
     
     await prisma.expense.delete({
-      where: { id: id }
+      where: { id: id, userId: session.user.id }
     })
     
     return NextResponse.json({ success: true })

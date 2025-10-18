@@ -1,47 +1,61 @@
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
 
-export async function middleware(req: NextRequest) {
-  const res = NextResponse.next()
-  const supabase = createMiddlewareClient({ req, res })
+export async function middleware(request: NextRequest) {
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  })
 
-  // Verificar sessão do usuário
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          response.cookies.set({
+            name,
+            value,
+            ...options,
+          })
+        },
+        remove(name: string, options: CookieOptions) {
+          response.cookies.set({
+            name,
+            value: '',
+            ...options,
+          })
+        },
+      },
+    }
+  )
+
   const {
     data: { session },
   } = await supabase.auth.getSession()
 
-  // Rotas públicas que não precisam de autenticação
   const publicRoutes = ['/login', '/register', '/']
-  const isPublicRoute = publicRoutes.includes(req.nextUrl.pathname)
+  const isPublicRoute = publicRoutes.includes(request.nextUrl.pathname)
 
-  // Se não há sessão e não é uma rota pública, redirecionar para login
   if (!session && !isPublicRoute) {
-    const redirectUrl = new URL('/login', req.url)
+    const redirectUrl = new URL('/login', request.url)
     return NextResponse.redirect(redirectUrl)
   }
 
-  // Se há sessão e está tentando acessar login/register, redirecionar para dashboard
   if (session && isPublicRoute) {
-    const redirectUrl = new URL('/dashboard', req.url)
+    const redirectUrl = new URL('/dashboard', request.url)
     return NextResponse.redirect(redirectUrl)
   }
 
-  // Se está na raiz e autenticado, permitir acesso (não redirecionar)
-  // Usuários podem acessar tanto / quanto /dashboard quando autenticados
-
-  return res
+  return response
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
