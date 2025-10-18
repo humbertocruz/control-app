@@ -12,8 +12,12 @@ export interface AuthTokenPayload {
   email: string
 }
 
-export function signToken(payload: AuthTokenPayload, expiresInSeconds: number = 60 * 60 * 24 * 7) {
-  const options: SignOptions = { expiresIn: expiresInSeconds }
+// Remover expiração por padrão: sessão só termina ao fazer logout
+export function signToken(payload: AuthTokenPayload, expiresInSeconds?: number) {
+  const options: SignOptions = {}
+  if (expiresInSeconds && expiresInSeconds > 0) {
+    options.expiresIn = expiresInSeconds
+  }
   return jwt.sign(payload, getSecret(), options)
 }
 
@@ -27,14 +31,16 @@ export function verifyToken(token: string): AuthTokenPayload | null {
 
 export async function setAuthCookie(token: string) {
   const cookieStore = await cookies()
+  const TEN_YEARS = 60 * 60 * 24 * 365 * 10
+  const isSecure = process.env.NODE_ENV === 'production'
   cookieStore.set({
     name: TOKEN_NAME,
     value: token,
     httpOnly: true,
     sameSite: 'lax',
-    secure: false,
+    secure: isSecure,
     path: '/',
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: TEN_YEARS,
   })
 }
 
@@ -45,7 +51,7 @@ export async function clearAuthCookie() {
     value: '',
     httpOnly: true,
     sameSite: 'lax',
-    secure: false,
+    secure: process.env.NODE_ENV === 'production',
     path: '/',
     maxAge: 0,
   })
