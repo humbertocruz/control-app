@@ -1,12 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
 
 const prisma = new PrismaClient()
 
 export async function GET() {
+  const cookieStore = cookies()
+  const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+
   try {
+    const { data: { session } } = await supabase.auth.getSession()
+
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const fixedExpenses = await prisma.fixedExpense.findMany({
-      orderBy: { id: 'asc' }
+      where: { userId: session.user.id },
+      orderBy: { paymentDate: 'asc' }
     })
     
     return NextResponse.json(fixedExpenses)
@@ -18,10 +30,11 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, amount, frequency, paymentDate } = await request.json()
+    const { name, amount, frequency, paymentDate, userId } = await request.json()
     
     const fixedExpense = await prisma.fixedExpense.create({
       data: {
+        userId,
         name,
         amount: parseFloat(amount),
         frequency,

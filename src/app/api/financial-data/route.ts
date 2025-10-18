@@ -1,11 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
 
 const prisma = new PrismaClient()
 
 export async function GET() {
+  const cookieStore = cookies()
+  const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+
   try {
+    const { data: { session } } = await supabase.auth.getSession()
+
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const financialData = await prisma.financialData.findFirst({
+      where: { userId: session.user.id },
       orderBy: { id: 'desc' }
     })
     
@@ -18,13 +30,16 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { totalMoney, nextPaymentDate } = await request.json()
+    const { totalMoney, nextPaymentDate, userId } = await request.json()
     
-    // Delete existing data and create new one (simple approach for single user)
-    await prisma.financialData.deleteMany()
+    // Delete existing data for this user and create new one
+    await prisma.financialData.deleteMany({
+      where: { userId }
+    })
     
     const financialData = await prisma.financialData.create({
       data: {
+        userId,
         totalMoney: parseFloat(totalMoney),
         nextPaymentDate: new Date(nextPaymentDate)
       }

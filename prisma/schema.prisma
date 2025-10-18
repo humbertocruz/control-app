@@ -6,33 +6,42 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model FinancialData {
   id              String   @id @default(cuid())
+  userId          String   // Supabase Auth user ID
   totalMoney      Float
   nextPaymentDate DateTime
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  @@unique([userId]) // Cada usuário tem apenas um registro de dados financeiros
 }
 
 model FixedExpense {
   id          String   @id @default(cuid())
+  userId      String   // Supabase Auth user ID
   name        String
   amount      Float
   frequency   String   // "monthly", "weekly", "daily"
   paymentDate DateTime
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([userId]) // Índice para consultas por usuário
 }
 
 model Expense {
   id          String   @id @default(cuid())
+  userId      String   // Supabase Auth user ID
   description String
   amount      Float
   date        DateTime
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([userId]) // Índice para consultas por usuário
 }
