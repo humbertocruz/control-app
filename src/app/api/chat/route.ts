@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
-
+const genAI = new GoogleGenerativeAI('AIzaSyBtPyoZXa2Jao5FiDZSfqSOCVQbLRrjTdY');
 export async function POST(req: NextRequest) {
   try {
     const { message } = await req.json();
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
 
     const chat = model.startChat({
       history: [

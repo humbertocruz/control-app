@@ -1,43 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { getCurrentUserFromCookies } from '@/lib/auth'
 
 const prisma = new PrismaClient()
 
-const createSupabaseServerClient = async () => {
-  const cookieStore = await cookies()
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          cookieStore.set({ name, value, ...options })
-        },
-        remove(name: string, options: CookieOptions) {
-          cookieStore.set({ name, value: '', ...options })
-        },
-      },
-    }
-  )
-}
-
 export async function GET() {
-  const supabase = await createSupabaseServerClient()
-
   try {
-    const { data: { session } } = await supabase.auth.getSession()
-
-    if (!session) {
+    const payload = await getCurrentUserFromCookies()
+    if (!payload) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const expenses = await prisma.expense.findMany({
-      where: { userId: session.user.id },
+      where: { userId: payload.userId },
       orderBy: { date: 'desc' }
     })
     
@@ -49,25 +24,47 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = await createSupabaseServerClient()
-
   try {
-    const { data: { session } } = await supabase.auth.getSession()
-
-    if (!session) {
+    const payload = await getCurrentUserFromCookies()
+    if (!payload) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { description, amount, date } = await request.json()
+    const { description, amount, date, paymentMethod } = await request.json()
     
+    const data: any = {
+      userId: payload.userId,
+      description,
+      amount: parseFloat(amount),
+      date: new Date(date),
+      paymentMethod: paymentMethod || 'cash',
+    }
+
     const expense = await prisma.expense.create({
-      data: {
-        userId: session.user.id,
-        description,
-        amount: parseFloat(amount),
-        date: new Date(date)
-      }
+      data
     })
+
+    // Ajusta dados financeiros conforme método de pagamento
+    const fd: any = await prisma.financialData.findFirst({
+      where: { userId: payload.userId },
+      orderBy: { id: 'desc' }
+    })
+
+    if (fd) {
+      if (data.paymentMethod === 'cash' || data.paymentMethod === 'pix') {
+        const newTotal = (fd.totalMoney || 0) - data.amount
+        await prisma.financialData.update({
+          where: { id: fd.id },
+          data: { totalMoney: newTotal } as any
+        })
+      } else if (data.paymentMethod === 'credit') {
+        const newUsed = (fd.creditUsed || 0) + data.amount
+        await prisma.financialData.update({
+          where: { id: fd.id },
+          data: { creditUsed: newUsed } as any
+        })
+      }
+    }
     
     return NextResponse.json(expense)
   } catch (error) {
@@ -77,12 +74,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const supabase = await createSupabaseServerClient()
-
   try {
-    const { data: { session } } = await supabase.auth.getSession()
-
-    if (!session) {
+    const payload = await getCurrentUserFromCookies()
+    if (!payload) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -94,7 +88,7 @@ export async function DELETE(request: NextRequest) {
     }
     
     await prisma.expense.delete({
-      where: { id: id, userId: session.user.id }
+      where: { id: id }
     })
     
     return NextResponse.json({ success: true })

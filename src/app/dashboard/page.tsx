@@ -18,6 +18,10 @@ import {
 interface FinancialData {
   totalMoney: number
   nextPaymentDate: string
+  creditLimit?: number
+  creditUsed?: number
+  statementClosingDate?: string | null
+  dueDate?: string | null
 }
 
 interface FixedExpense {
@@ -198,6 +202,29 @@ export default function DashboardPage() {
               </div>
               <p className="text-xs text-gray-400">
                 {fixedExpenses.length} gastos cadastrados
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Cartão de Crédito */}
+          <Card className="bg-gray-900 border-gray-800">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-400">
+                Cartão de Crédito
+              </CardTitle>
+              <CreditCard className="h-4 w-4 text-purple-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">
+                Limite disponível: R$ {(
+                  financialData?.creditLimit && financialData?.creditUsed !== undefined
+                    ? Math.max(0, (financialData.creditLimit || 0) - (financialData.creditUsed || 0)).toFixed(2)
+                    : '0,00'
+                )}
+              </div>
+              <p className="text-xs text-gray-400">
+                Fechamento: {financialData?.statementClosingDate ? new Date(financialData.statementClosingDate).toLocaleDateString('pt-BR') : '-'} | 
+                Vencimento: {financialData?.dueDate ? new Date(financialData.dueDate).toLocaleDateString('pt-BR') : '-'}
               </p>
             </CardContent>
           </Card>

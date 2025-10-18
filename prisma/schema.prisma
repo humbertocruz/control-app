@@ -6,24 +6,43 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  financialData FinancialData?
+  fixedExpenses FixedExpense[]
+  expenses      Expense[]
 }
 
 model FinancialData {
-  id              String   @id @default(cuid())
-  userId          String   // Supabase Auth user ID
-  totalMoney      Float
-  nextPaymentDate DateTime
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id])
+  totalMoney            Float
+  nextPaymentDate       DateTime
+  // Novos campos para cartão de crédito
+  creditLimit           Float    @default(0)
+  creditUsed            Float    @default(0)
+  statementClosingDate  DateTime?
+  dueDate               DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   @@unique([userId]) // Cada usuário tem apenas um registro de dados financeiros
 }
 
 model FixedExpense {
   id          String   @id @default(cuid())
-  userId      String   // Supabase Auth user ID
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
   name        String
   amount      Float
   frequency   String   // "monthly", "weekly", "daily"
@@ -35,13 +54,16 @@ model FixedExpense {
 }
 
 model Expense {
-  id          String   @id @default(cuid())
-  userId      String   // Supabase Auth user ID
-  description String
-  amount      Float
-  date        DateTime
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  description    String
+  amount         Float
+  date           DateTime
+  // Método de pagamento: 'cash' | 'pix' | 'credit'
+  paymentMethod  String   @default("cash")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@index([userId]) // Índice para consultas por usuário
 }

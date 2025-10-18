@@ -38,7 +38,6 @@ export default function LoginPage() {
       
       // Fazer login
       const { error } = await signIn(validatedData.email, validatedData.password)
-      
       if (error) {
         setError(error)
       } else {

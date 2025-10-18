@@ -13,6 +13,10 @@ import { CalendarIcon, DollarSign, Save, AlertCircle, Loader2 } from 'lucide-rea
 interface FinancialData {
   totalMoney: number
   nextPaymentDate: string
+  creditLimit?: number
+  creditUsed?: number
+  statementClosingDate?: string | null
+  dueDate?: string | null
 }
 
 export default function FinancialDataPage() {
@@ -20,6 +24,10 @@ export default function FinancialDataPage() {
   const router = useRouter()
   const [totalMoney, setTotalMoney] = useState<string>('')
   const [nextPaymentDate, setNextPaymentDate] = useState<string>('')
+  const [creditLimit, setCreditLimit] = useState<string>('')
+  const [statementClosingDate, setStatementClosingDate] = useState<string>('')
+  const [dueDate, setDueDate] = useState<string>('')
+  const [creditUsed, setCreditUsed] = useState<number>(0)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<boolean>(false)
   const [error, setError] = useState<string>('')
@@ -40,12 +48,24 @@ export default function FinancialDataPage() {
         const response = await fetch('/api/financial-data')
         
         if (response.ok) {
-          const data = await response.json()
-          if (data.totalMoney !== null) {
+          const data: FinancialData = await response.json()
+          if (data.totalMoney !== null && data.totalMoney !== undefined) {
             setTotalMoney(data.totalMoney.toString())
           }
           if (data.nextPaymentDate) {
             setNextPaymentDate(new Date(data.nextPaymentDate).toISOString().split('T')[0])
+          }
+          if (data.creditLimit !== undefined) {
+            setCreditLimit(data.creditLimit.toString())
+          }
+          if (data.statementClosingDate) {
+            setStatementClosingDate(new Date(data.statementClosingDate).toISOString().split('T')[0])
+          }
+          if (data.dueDate) {
+            setDueDate(new Date(data.dueDate).toISOString().split('T')[0])
+          }
+          if (data.creditUsed !== undefined) {
+            setCreditUsed(data.creditUsed)
           }
         }
       } catch (error) {
@@ -63,7 +83,7 @@ export default function FinancialDataPage() {
 
   const saveFinancialData = async () => {
     if (!totalMoney || !nextPaymentDate) {
-      setError('Por favor, preencha todos os campos')
+      setError('Por favor, preencha todos os campos obrigatórios')
       return
     }
 
@@ -78,7 +98,10 @@ export default function FinancialDataPage() {
         body: JSON.stringify({
           userId: user?.id,
           totalMoney: parseFloat(totalMoney),
-          nextPaymentDate: nextPaymentDate
+          nextPaymentDate: nextPaymentDate,
+          creditLimit: creditLimit ? parseFloat(creditLimit) : 0,
+          statementClosingDate: statementClosingDate || null,
+          dueDate: dueDate || null,
         })
       })
 
@@ -206,6 +229,44 @@ export default function FinancialDataPage() {
                       className="bg-gray-900 border-gray-600 text-white"
                     />
                   </div>
+                  <div className="space-y-2 mt-4">
+                    <Label htmlFor="creditLimit" className="text-gray-300">
+                      Limite do Cartão (R$)
+                    </Label>
+                    <Input
+                      id="creditLimit"
+                      type="number"
+                      step="0.01"
+                      placeholder="0,00"
+                      value={creditLimit}
+                      onChange={(e) => setCreditLimit(e.target.value)}
+                      className="bg-gray-900 border-gray-600 text-white"
+                    />
+                  </div>
+                  <div className="space-y-2 mt-4">
+                    <Label htmlFor="statementClosingDate" className="text-gray-300">
+                      Data de Fechamento
+                    </Label>
+                    <Input
+                      id="statementClosingDate"
+                      type="date"
+                      value={statementClosingDate}
+                      onChange={(e) => setStatementClosingDate(e.target.value)}
+                      className="bg-gray-900 border-gray-600 text-white"
+                    />
+                  </div>
+                  <div className="space-y-2 mt-4">
+                    <Label htmlFor="dueDate" className="text-gray-300">
+                      Data de Vencimento
+                    </Label>
+                    <Input
+                      id="dueDate"
+                      type="date"
+                      value={dueDate}
+                      onChange={(e) => setDueDate(e.target.value)}
+                      className="bg-gray-900 border-gray-600 text-white"
+                    />
+                  </div>
                   <Button 
                     type="submit"
                     className="w-full bg-blue-600 hover:bg-blue-700 mt-6"
@@ -248,18 +309,29 @@ export default function FinancialDataPage() {
                   
                   <div className="flex justify-between items-center p-3 bg-gray-900/50 rounded-lg">
                     <span className="text-gray-300">Próximo Pagamento:</span>
-                    <span className="text-blue-400 font-semibold">
-                      {nextPaymentDate ? 
-                        new Date(nextPaymentDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 
-                        'Não definido'
-                      }
+                    <span className="text-blue-400 font-medium">
+                      {nextPaymentDate ? new Date(nextPaymentDate).toLocaleDateString('pt-BR') : '-'}
                     </span>
                   </div>
-                  
+
                   <div className="flex justify-between items-center p-3 bg-gray-900/50 rounded-lg">
-                    <span className="text-gray-300">Dias até pagamento:</span>
+                    <span className="text-gray-300">Limite Disponível:</span>
                     <span className="text-purple-400 font-semibold">
-                      {calculateDaysUntilPayment()} dias
+                      {creditLimit ? formatCurrency(Math.max(0, parseFloat(creditLimit) - (creditUsed || 0))) : 'R$ 0,00'}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center p-3 bg-gray-900/50 rounded-lg">
+                    <span className="text-gray-300">Fechamento da Fatura:</span>
+                    <span className="text-gray-300 font-medium">
+                      {statementClosingDate ? new Date(statementClosingDate).toLocaleDateString('pt-BR') : '-'}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center p-3 bg-gray-900/50 rounded-lg">
+                    <span className="text-gray-300">Vencimento:</span>
+                    <span className="text-gray-300 font-medium">
+                      {dueDate ? new Date(dueDate).toLocaleDateString('pt-BR') : '-'}
                     </span>
                   </div>
                 </div>

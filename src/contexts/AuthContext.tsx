@@ -1,11 +1,14 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { User } from '@supabase/supabase-js'
-import { createSupabaseClient } from '@/lib/supabase'
+
+interface AppUser {
+  id: string
+  email: string
+}
 
 interface AuthContextType {
-  user: User | null
+  user: AppUser | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ error?: string }>
   signUp: (email: string, password: string) => Promise<{ error?: string }>
@@ -15,43 +18,43 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<AppUser | null>(null)
   const [loading, setLoading] = useState(true)
-  const supabase = createSupabaseClient()
 
   useEffect(() => {
-    const getSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
-      setLoading(false)
+    const loadUser = async () => {
+      try {
+        const res = await fetch('/api/auth/me', { credentials: 'include' })
+        if (res.ok) {
+          const data = await res.json()
+          setUser(data)
+        } else {
+          setUser(null)
+        }
+      } catch {
+        setUser(null)
+      } finally {
+        setLoading(false)
+      }
     }
-
-    getSession()
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-    })
-
-    return () => subscription.unsubscribe()
-  }, [supabase.auth])
+    loadUser()
+  }, [])
 
   const signIn = async (email: string, password: string) => {
     setLoading(true)
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+        credentials: 'include',
       })
-
-      if (error) {
-        return { error: error.message }
+      if (!res.ok) {
+        const { error } = await res.json()
+        return { error: error || 'Falha ao fazer login' }
       }
-
-      setUser(data.user)
+      const data = await res.json()
+      setUser(data)
       return {}
     } catch (error) {
       return { error: 'Erro inesperado ao fazer login' }
@@ -63,16 +66,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (email: string, password: string) => {
     setLoading(true)
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+        credentials: 'include',
       })
-
-      if (error) {
-        return { error: error.message }
+      if (!res.ok) {
+        const { error } = await res.json()
+        return { error: error || 'Falha ao criar conta' }
       }
-
-      setUser(data.user)
+      // Opcional: já fazer login automático após criar
+      await signIn(email, password)
       return {}
     } catch (error) {
       return { error: 'Erro inesperado ao criar conta' }
@@ -82,7 +87,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
-    await supabase.auth.signOut()
+    try {
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+    } finally {
+      setUser(null)
+    }
   }
 
   const value = {

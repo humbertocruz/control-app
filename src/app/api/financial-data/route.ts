@@ -1,47 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { getCurrentUserFromCookies } from '@/lib/auth'
 
 const prisma = new PrismaClient()
 
-const createSupabaseServerClient = async () => {
-  const cookieStore = await cookies()
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          cookieStore.set({ name, value, ...options })
-        },
-        remove(name: string, options: CookieOptions) {
-          cookieStore.set({ name, value: '', ...options })
-        },
-      },
-    }
-  )
-}
-
 export async function GET() {
-  const supabase = await createSupabaseServerClient()
-
   try {
-    const { data: { session } } = await supabase.auth.getSession()
-
-    if (!session) {
+    const payload = await getCurrentUserFromCookies()
+    if (!payload) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const financialData = await prisma.financialData.findFirst({
-      where: { userId: session.user.id },
+      where: { userId: payload.userId },
       orderBy: { id: 'desc' }
     })
     
-    return NextResponse.json(financialData || { totalMoney: 0, nextPaymentDate: null })
+    // Garantir resposta com campos esperados
+    if (!financialData) {
+      return NextResponse.json({
+        totalMoney: 0,
+        nextPaymentDate: null,
+        creditLimit: 0,
+        creditUsed: 0,
+        statementClosingDate: null,
+        dueDate: null,
+      })
+    }
+
+    return NextResponse.json(financialData)
   } catch (error) {
     console.error('Error fetching financial data:', error)
     return NextResponse.json({ error: 'Failed to fetch financial data' }, { status: 500 })
@@ -49,27 +36,37 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = await createSupabaseServerClient()
   try {
-    const { data: { session } } = await supabase.auth.getSession()
-
-    if (!session) {
+    const payload = await getCurrentUserFromCookies()
+    if (!payload) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { totalMoney, nextPaymentDate } = await request.json()
+    const body = await request.json()
+    const {
+      totalMoney,
+      nextPaymentDate,
+      creditLimit,
+      statementClosingDate,
+      dueDate,
+    } = body
     
-    // Delete existing data for this user and create new one
     await prisma.financialData.deleteMany({
-      where: { userId: session.user.id }
+      where: { userId: payload.userId }
     })
     
+    const data: any = {
+      userId: payload.userId,
+      totalMoney: parseFloat(totalMoney),
+      nextPaymentDate: new Date(nextPaymentDate),
+      creditLimit: creditLimit ? parseFloat(creditLimit) : 0,
+      statementClosingDate: statementClosingDate ? new Date(statementClosingDate) : null,
+      dueDate: dueDate ? new Date(dueDate) : null,
+      // creditUsed é mantido em 0; será atualizado via despesas no crédito
+    }
+
     const financialData = await prisma.financialData.create({
-      data: {
-        userId: session.user.id,
-        totalMoney: parseFloat(totalMoney),
-        nextPaymentDate: new Date(nextPaymentDate)
-      }
+      data
     })
     
     return NextResponse.json(financialData)
