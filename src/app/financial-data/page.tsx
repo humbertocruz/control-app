@@ -310,7 +310,7 @@ export default function FinancialDataPage() {
                   <div className="flex justify-between items-center p-3 bg-gray-900/50 rounded-lg">
                     <span className="text-gray-300">Próximo Pagamento:</span>
                     <span className="text-blue-400 font-medium">
-                      {nextPaymentDate ? new Date(nextPaymentDate).toLocaleDateString('pt-BR') : '-'}
+                      {nextPaymentDate ? new Date(nextPaymentDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '-'}
                     </span>
                   </div>
 
@@ -324,14 +324,14 @@ export default function FinancialDataPage() {
                   <div className="flex justify-between items-center p-3 bg-gray-900/50 rounded-lg">
                     <span className="text-gray-300">Fechamento da Fatura:</span>
                     <span className="text-gray-300 font-medium">
-                      {statementClosingDate ? new Date(statementClosingDate).toLocaleDateString('pt-BR') : '-'}
+                      {statementClosingDate ? new Date(statementClosingDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '-'}
                     </span>
                   </div>
 
                   <div className="flex justify-between items-center p-3 bg-gray-900/50 rounded-lg">
                     <span className="text-gray-300">Vencimento:</span>
                     <span className="text-gray-300 font-medium">
-                      {dueDate ? new Date(dueDate).toLocaleDateString('pt-BR') : '-'}
+                      {dueDate ? new Date(dueDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '-'}
                     </span>
                   </div>
                 </div>

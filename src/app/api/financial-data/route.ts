@@ -59,10 +59,11 @@ export async function POST(request: NextRequest) {
       data: {
         userId: payload.userId,
         totalMoney: parseFloat(totalMoney),
-        nextPaymentDate: new Date(nextPaymentDate),
+        // Parse "YYYY-MM-DD" como meio-dia UTC para evitar deslocamento de fuso
+        nextPaymentDate: new Date(`${nextPaymentDate}T12:00:00.000Z`),
         creditLimit: creditLimit ? parseFloat(creditLimit) : 0,
-        statementClosingDate: statementClosingDate ? new Date(statementClosingDate) : null,
-        dueDate: dueDate ? new Date(dueDate) : null,
+        statementClosingDate: statementClosingDate ? new Date(`${statementClosingDate}T12:00:00.000Z`) : null,
+        dueDate: dueDate ? new Date(`${dueDate}T12:00:00.000Z`) : null,
       }
     })
     

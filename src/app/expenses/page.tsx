@@ -219,7 +219,7 @@ export default function ExpensesPage() {
                     <div>
                       <p className="text-white font-medium">{e.description}</p>
                       <p className="text-sm text-gray-400">
-                        {new Date(e.date).toLocaleDateString('pt-BR')}
+                        {new Date(e.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
                       </p>
                     </div>
                     <div className="flex items-center gap-4">

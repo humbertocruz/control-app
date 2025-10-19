@@ -38,7 +38,8 @@ export async function POST(request: NextRequest) {
         name,
         amount: parseFloat(amount),
         frequency,
-        paymentDate: new Date(paymentDate)
+        // Parse "YYYY-MM-DD" como meio-dia UTC para evitar deslocamento de fuso
+        paymentDate: new Date(`${paymentDate}T12:00:00.000Z`)
       }
     })
 

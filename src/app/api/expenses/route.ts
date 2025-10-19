@@ -37,7 +37,8 @@ export async function POST(request: NextRequest) {
         userId: payload.userId,
         description,
         amount: parseFloat(amount),
-        date: new Date(date),
+        // Parse "YYYY-MM-DD" como meio-dia UTC para evitar deslocamento de fuso
+        date: new Date(`${date}T12:00:00.000Z`),
         paymentMethod: (paymentMethod || 'cash') as 'cash' | 'pix' | 'credit',
       }
     })

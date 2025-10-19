@@ -223,8 +223,8 @@ export default function DashboardPage() {
                 )}
               </div>
               <p className="text-xs text-gray-400">
-                Fechamento: {financialData?.statementClosingDate ? new Date(financialData.statementClosingDate).toLocaleDateString('pt-BR') : '-'} | 
-                Vencimento: {financialData?.dueDate ? new Date(financialData.dueDate).toLocaleDateString('pt-BR') : '-'}
+                Fechamento: {financialData?.statementClosingDate ? new Date(financialData.statementClosingDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '-'} | 
+                Vencimento: {financialData?.dueDate ? new Date(financialData.dueDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '-'}
               </p>
             </CardContent>
           </Card>
@@ -270,7 +270,7 @@ export default function DashboardPage() {
                       <div>
                         <p className="text-white font-medium">{expense.name}</p>
                         <p className="text-sm text-gray-400">
-                          {new Date(expense.paymentDate).toLocaleDateString('pt-BR')} - {expense.frequency}
+                          {new Date(expense.paymentDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })} - {expense.frequency}
                         </p>
                       </div>
                       <div className="text-orange-400 font-semibold">
@@ -308,7 +308,7 @@ export default function DashboardPage() {
                       <div>
                         <p className="text-white font-medium">{expense.description}</p>
                         <p className="text-sm text-gray-400">
-                          {new Date(expense.date).toLocaleDateString('pt-BR')}
+                          {new Date(expense.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
                         </p>
                       </div>
                       <div className="text-red-400 font-semibold">
