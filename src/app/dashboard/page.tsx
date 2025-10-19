@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import Header from '@/components/Header'
 import Chat from '@/components/Chat'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { 
   DollarSign, 
   Calendar, 
@@ -46,6 +47,9 @@ export default function DashboardPage() {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [dailySpending, setDailySpending] = useState(0)
+  const [todayFixedExpenses, setTodayFixedExpenses] = useState<FixedExpense[]>([])
+  const [dismissedIds, setDismissedIds] = useState<string[]>([])
+  const [addingId, setAddingId] = useState<string | null>(null)
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -83,6 +87,38 @@ export default function DashboardPage() {
 
     loadDashboardData()
   }, [user])
+
+  // Detecta gastos fixos mensais do dia pelo dia UTC
+  useEffect(() => {
+    const todayUTC = new Date()
+    const todayDay = todayUTC.getUTCDate()
+    const dueToday = fixedExpenses.filter((e) => {
+      const day = new Date(e.paymentDate).getUTCDate()
+      return e.frequency === 'monthly' && day === todayDay
+    })
+    setTodayFixedExpenses(dueToday)
+  }, [fixedExpenses])
+
+  const addFixedExpenseAsExpense = async (fx: FixedExpense) => {
+    try {
+      setAddingId(fx.id)
+      const todayStr = new Date().toISOString().split('T')[0]
+      const res = await fetch('/api/expenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: fx.name, amount: fx.amount, date: todayStr, paymentMethod: 'cash' }),
+        credentials: 'include',
+      })
+      if (!res.ok) throw new Error('Falha ao registrar despesa')
+      const created = await res.json()
+      setExpenses((prev) => [created, ...prev])
+      setDismissedIds((prev) => [...prev, fx.id])
+    } catch (err) {
+      console.error('Erro ao adicionar despesa fixa como despesa:', err)
+    } finally {
+      setAddingId(null)
+    }
+  }
 
   const calculateDailySpending = () => {
     if (!financialData) return 0
@@ -150,6 +186,45 @@ export default function DashboardPage() {
           <p className="text-gray-400 mt-2">Visão geral das suas finanças</p>
         </div>
 
+        {/* Lembrete de gastos fixos do dia */}
+        {todayFixedExpenses.filter((fx) => !dismissedIds.includes(fx.id)).length > 0 && (
+          <Card className="bg-blue-900/20 border border-blue-700 mb-6">
+            <CardHeader>
+              <CardTitle className="text-white">Lembrete de Gasto Fixo de Hoje</CardTitle>
+              <CardDescription className="text-gray-300">
+                Deseja registrar no dashboard as despesas fixas de hoje?
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {todayFixedExpenses.filter((fx) => !dismissedIds.includes(fx.id)).map((fx) => (
+                  <div key={fx.id} className="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+                    <div>
+                      <p className="text-white font-medium">{fx.name}</p>
+                      <p className="text-sm text-gray-400">Valor: R$ {fx.amount.toFixed(2)} • Dia {new Date(fx.paymentDate).getUTCDate()}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        className="bg-green-600 hover:bg-green-700"
+                        onClick={() => addFixedExpenseAsExpense(fx)}
+                        disabled={addingId === fx.id}
+                      >
+                        {addingId === fx.id ? 'Adicionando...' : 'Adicionar hoje'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="border-gray-700"
+                        onClick={() => setDismissedIds((prev) => [...prev, fx.id])}
+                      >
+                        Agora não
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
         {/* Cards de Resumo */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Saldo Total */}
@@ -215,6 +290,9 @@ export default function DashboardPage() {
               <CreditCard className="h-4 w-4 text-purple-500" />
             </CardHeader>
             <CardContent>
+              <div className="text-sm text-gray-300">
+                Limite: R$ {(financialData?.creditLimit !== undefined ? (financialData.creditLimit || 0).toFixed(2) : '0,00')}
+              </div>
               <div className="text-2xl font-bold text-white">
                 Limite disponível: R$ {(
                   financialData?.creditLimit && financialData?.creditUsed !== undefined
@@ -263,14 +341,14 @@ export default function DashboardPage() {
             <CardContent>
               <div className="space-y-3">
                 {fixedExpenses
-                  .sort((a, b) => new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime())
+                  .sort((a, b) => new Date(a.paymentDate).getUTCDate() - new Date(b.paymentDate).getUTCDate())
                   .slice(0, 5)
                   .map((expense) => (
                     <div key={expense.id} className="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
                       <div>
                         <p className="text-white font-medium">{expense.name}</p>
                         <p className="text-sm text-gray-400">
-                          {new Date(expense.paymentDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })} - {expense.frequency}
+                          Dia {new Date(expense.paymentDate).getUTCDate()} - {expense.frequency}
                         </p>
                       </div>
                       <div className="text-orange-400 font-semibold">

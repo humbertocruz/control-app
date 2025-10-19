@@ -315,6 +315,13 @@ export default function FinancialDataPage() {
                   </div>
 
                   <div className="flex justify-between items-center p-3 bg-gray-900/50 rounded-lg">
+                    <span className="text-gray-300">Limite do Cartão:</span>
+                    <span className="text-purple-400 font-semibold">
+                      {creditLimit ? formatCurrency(parseFloat(creditLimit)) : 'R$ 0,00'}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center p-3 bg-gray-900/50 rounded-lg">
                     <span className="text-gray-300">Limite Disponível:</span>
                     <span className="text-purple-400 font-semibold">
                       {creditLimit ? formatCurrency(Math.max(0, parseFloat(creditLimit) - (creditUsed || 0))) : 'R$ 0,00'}
